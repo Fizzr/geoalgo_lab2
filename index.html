@@ -1,0 +1,294 @@
+<html>
+
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+
+    <canvas id="myCanvas" width="800" height="600" style="border:1px solid #000000;"></canvas>
+
+    <br>
+    <button id="random" class="menu">Random</button>
+    <button id="compute" class="menu">Compute</button>
+    <button id="clear" class="menu">Clear</button>
+    <input id="input" type="file" accept=".txt" hidden="hidden">
+    <label for="input" class="menu">Load</label>
+    <button id="coords" class="menu">Coords</button>
+    <button id="unclutter" class="menu">Unclutter</button>
+    <select id="algorithm">
+        <option>Andrew</option>
+        <option>Melkman</option>
+    </select>
+	
+	<script>
+		var $canvas = $("#myCanvas");
+        var canvas = $canvas[0];
+        var c = canvas.getContext("2d");
+        var pointList = [];
+        var circleSize = 5;
+        var restorePoint;
+        var cluttered = false;
+
+        c.fillStyle = "#CA1337"
+
+
+
+        function addPoint (x, y)
+        {
+            var invertedY = canvas.height -y;
+            pointList.push([x,y]);
+            c.strokeStyle = "#000000";
+            c.beginPath();
+            c.arc(x,invertedY, circleSize, 0, 2*Math.PI, false);
+            c.fill();
+            c.stroke();
+        }
+		
+		$canvas.click(function(e)
+        {
+            if(cluttered)
+            {
+                c.putImageData(restorePoint, 0, 0);
+                cluttered = false;
+            }
+            var xCord = e.pageX - canvas.offsetLeft;
+            var yCord = e.pageY - canvas.offsetTop;
+            addPoint(xCord, canvas.height - yCord);
+        });
+
+		$("#algorithm").change(function()
+        {
+            cluttered = false;
+            pointList.length = 0;
+            c.clearRect(0,0, canvas.width, canvas.height);
+        });
+		
+		$("#clear").click(function()
+        {
+            cluttered = false;
+            pointList.length = 0;
+            c.clearRect(0,0, canvas.width, canvas.height);
+        });
+		
+		$("#coords").click(function()
+        {
+            if(!cluttered)
+                restorePoint = c.getImageData(0,0, canvas.width, canvas.height);
+            cluttered = true;
+            for(var i = 0; i < pointList.length; i++)
+            {
+                c.strokeStyle = "#000000";
+                c.strokeText(pointList[i][0] + " : " + pointList[i][1], pointList[i][0], canvas.height - pointList[i][1] - 20);
+            }
+        });
+		
+		$("#unclutter").click(function()
+        {
+            if(cluttered)
+            {
+                c.putImageData(restorePoint, 0, 0);
+                cluttered = false;
+            }
+        });
+		
+		$("#input").change(function()
+        {
+            if(cluttered)
+            {
+                c.putImageData(restorePoint, 0, 0);
+                cluttered = false;
+            }
+            var file = this.files[0];
+            $(this).val("");
+            var reader = new FileReader();
+
+            reader.onload = function(e)
+            {
+                var text = reader.result;
+                var lines = text.split(/[\r\n]+/g);
+
+                for (var i = 0; i < lines.length; i++)
+                {
+                    coords = lines[i].split(" ");
+                    if(coords.length != 2 || isNaN(coords[0]) || isNaN(coords[1]))
+                    {
+                        alert("Error reading file on line "+ i);
+                        return;
+                    }
+                    addPoint(parseInt(coords[0]), parseInt(coords[1]));
+                }
+            };
+            reader.readAsText(file);
+        });
+		
+		$("#random").click(function (e)
+        {
+            if(cluttered)
+            {
+                c.putImageData(restorePoint, 0, 0);
+                cluttered = false;
+            }
+            var num = Math.random()*40+5;
+
+            for(var i = 0; i < num; i++)
+            {
+                var x = Math.floor(Math.random()*canvas.width);
+                var y = Math.floor(Math.random()*canvas.height);
+                addPoint(x,y);
+            }
+        });
+		
+		$("#compute").click(function()
+        {
+            if(!cluttered)
+                restorePoint = c.getImageData(0,0, canvas.width, canvas.height);
+            cluttered = true;
+			var res = brute();
+			c.strokeStyle = "#000000";
+			c.beginPath();
+			c.arc(res[0][0], canvas.height - res[0][1], res[1], 0, Math.PI*2);
+			c.stroke();
+
+			
+        });
+		
+		function inside(circ, point)//a, b, c, d)
+		{
+			var mid = circ[0];
+			var diffX = mid[0] - point[0];
+			var diffY = mid[1] - point[1];
+			var distance = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
+			if (distance > circ[1])
+				return false;
+			return true;
+		
+			/*if(d == undefined)
+			{
+				//Find middle point and its radius, then compare with distance to point
+			
+				d = c; //if we only get three arguments, the circle only has 2 points, and the third argument is the point we're checking!
+				var diffX = ((a[0] - b[0])/2);
+				var diffY = ((a[1] - b[1])/2);
+				var midX = diffX + b[0];
+				var midY = diffY + b[1];
+				var radius = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
+				var distance = Math.sqrt(Math.pow(midX - d[0], 2) + Math.pow(midY - d[1], 2));
+				return radius <= distance;
+				
+			}
+			else
+			{			//No idea how this works, but the document says it's so!
+				/*var adx = a[0] - d[0];
+				var ady = a[1] - d[1];
+				var bdx = b[0] - d[0];
+				var bdy = b[1] - d[1];
+				var cdx = c[0] - d[0];
+				var cdy = c[1] - d[1];
+				var abdet = (adx * bdy) - (bdx * ady);
+				var bcdet = (bdx * cdy) - (cdx * bdy);
+				var cadet = (cdx * ady) - (adx * cdy);
+				var alift = (adx * adx) + (ady * ady);
+				var blift = (bdx * bdx) + (bdy * bdy);
+				var clift = (cdx * cdx) + (cdy * cdy);
+				var sign = (alift * bcdet) + (blift * cadet) + (clift * abdet);
+				return sign >= 0;
+				
+			}*/
+		}
+		
+		function circle(a, b, c)
+		{
+		var center;
+		var radius;
+			if (c == undefined)
+			{
+				var diffX = ((a[0] - b[0])/2);
+				var diffY = ((a[1] - b[1])/2);
+				center = [diffX + b[0], diffY + b[1]];
+				radius = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
+			}
+			else	//Discussed these calculations with Mattias
+			{
+				var m1 = (b[1] - a[1]) / (b[0] - a[0]);
+				var m2 = (c[1] - b[1]) / (c[0] - b[0]);
+				var x = (m1 * m2 * (c[1] - a[1]) + m1* (b[0]+c[0]) + m2 * (a[0] + b[0])) / (2 * (m1 - m2));
+				var y = (1/m1) * (x - (a[0] + b[0]) / 2) + (a[1] + b[1]) / 2;
+				center = [x, y]
+				radius = Math.sqrt(Math.pow(x - a[0], 2) + Math.pow(y - a[1], 2));
+				
+				/*
+				float m1 = (point2.Y - point1.Y) / (point2.X - point1.X);
+            float m2 = (point3.Y - point2.Y) / (point3.X - point2.X);
+
+            float X = (m1 * m2 * (point3.Y - point1.Y) + m1 * (point2.X + point3.X) + m2 * (point1.X + point2.X)) / (2 * (m1 - m2));
+            float Y = (1 / m1) * (X - (point1.X + point2.X) / 2) + (point1.Y + point2.Y) / 2;
+            Center = new Vector2(X, Y);
+            Radius = (Center - point1).Length();
+				*/
+			}
+			return [center, radius];
+		}
+		
+		function brute()
+		{
+			if(pointList.length < 2)
+			{
+				return [pointList[0], 0];
+			}
+			else if (pointList.length < 3)
+			{
+				var res = circle(pointList[0], pointList[1]);
+				return res;
+			}
+			else 
+			{
+				var minCircle = [[0,0], Number.MAX_SAFE_INTEGER];
+				for (var i = 0; i < pointList.length-1; i++)
+				{
+					var fault = false;
+					for(var j = i+1; (j < pointList.length) && !fault; j++)
+					{
+						var tmpCirc = circle(pointList[i], pointList[j]);
+						for (var k = 0; k < pointList.length && !fault; k++)
+						{
+							if(pointList[k] == pointList[i] || pointList[k] == pointList[j])
+								continue;
+							else
+								if(!inside(tmpCirc, pointList[k]))//pointList[i], pointList[j], pointList[k]))
+									fault = true;
+						}
+						if (fault)
+							continue;
+						if (tmpCirc[1] < minCircle[1])
+							minCircle = tmpCirc;
+					}
+				}
+				for (var i= 0; i < pointList.length-2; i++)
+				{
+					for(var j = i; j < pointList.length-1; j++)
+					{
+						var fault = false;
+						for(var k = j; k < pointList.length && !fault; k++)
+						{
+							var tmpCirc = circle(pointList[i], pointList[j], pointList[k]);
+							for(var l = 0; l < pointList.length && !fault; l++)
+							{
+								if(pointList[l] == pointList[i] || pointList[l] == pointList[j] || pointList[l] == pointList[k])
+									continue;
+								else
+									if(!inside(tmpCirc, pointList[l])) //pointList[i], pointList[j], pointList[k], pointList[l]))
+										fault = true;
+							}
+							if(fault)
+								continue;
+							if (tmpCirc[1] < minCircle[1])
+								minCircle = tmpCirc;
+						}
+					}
+				}
+				return minCircle;
+			}
+		}
+
+	</script>
+</html>
