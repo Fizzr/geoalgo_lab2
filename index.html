@@ -16,9 +16,28 @@
     <button id="coords" class="menu">Coords</button>
     <button id="unclutter" class="menu">Unclutter</button>
     <select id="algorithm">
-        <option>Andrew</option>
-        <option>Melkman</option>
+        <option>Brute</option>
+        <option>Recursive</option>
     </select>
+	 <div>
+        <div style="float:left">
+            <br>
+            A:
+            x<input  id ="ax" type="number" class="coord">
+            y<input  id ="ay" type="number" class="coord">
+            <br>
+            B:
+            x<input  id ="bx" type="number" class="coord">
+            y<input  id ="by" type="number" class="coord">
+            <br>
+            C:
+            x<input  id ="cx" type="number" class="coord">
+            y<input  id ="cy" type="number" class="coord">
+        </div>
+        <button id="testCircle" class="menu" style="float:left; margin-top: 40px; margin-left: 10px">Test Circle</button>
+        <div id="circleRes" style="float:left; margin-top: 40px; margin-left: 10px"> </div>
+    </div>
+	
 	
 	<script>
 		const X = 0;
@@ -134,11 +153,52 @@
 
             for(var i = 0; i < num; i++)
             {
-                var x = Math.floor(Math.random()*canvas.width);
-                var y = Math.floor(Math.random()*canvas.height);
+                var x = Math.floor(Math.random()*canvas.width/2 + canvas.width/4);
+                var y = Math.floor(Math.random()*canvas.height/2 + canvas.height/4);
                 addPoint(x,y);
             }
         });
+		
+		$("#testCircle").click(function()
+		{
+			console.log("!!!!!!!!!Test!!!!!!!!!!!!");
+			var ax = parseInt($("#ax").val());
+            var ay = parseInt($("#ay").val());
+            var bx = parseInt($("#bx").val());
+            var by = parseInt($("#by").val());
+            var cx = parseInt($("#cx").val());
+            var cy = parseInt($("#cy").val());
+			
+            if (!(isNaN(ax) || isNaN(ay) || isNaN(bx) || isNaN(by)))
+			{
+				if(!cluttered)
+					restorePoint = c.getImageData(0,0, canvas.width, canvas.height);
+				cluttered = true;
+
+				var circ; 
+	            if (!( isNaN(cx) || isNaN(cy)))
+				{
+					circ = circle([ax,ay], [bx,by], [cx, cy]);
+				}
+				else
+				{
+					circ = circle([ax,ay], [bx, by]);
+				}
+				console.log(circ);
+				c.strokeStyle = "#009999";
+				c.beginPath();
+				c.arc(circ[0][X], canvas.height - circ[0][Y], circ[1], 0, Math.PI*2);
+				c.stroke();
+				for (var i = 0; i < pointList.length; i++)
+				{
+					if(!inside(circ, pointList[i]))
+					{
+						console.log(pointList[i][X] + " : " + pointList[i][Y]); 
+					}
+				}
+			}
+
+		});
 		
 		$("#compute").click(function()
         {
@@ -160,7 +220,7 @@
 			var mid = circ[0];
 			var diffX = mid[X] - point[X];
 			var diffY = mid[Y] - point[Y];
-			var distance = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
+			var distance = Math.sqrt(diffX * diffX + diffY * diffY);
 			if (distance > circ[1])
 				return false;
 			return true;
@@ -286,52 +346,53 @@
 			}
 			else if (pointList.length < 3)
 			{
-				var res = circle(pointList[0], pointList[1]);
-				return res;
+				return circle(pointList[0], pointList[1]);
 			}
 			else 
 			{
 				var minCircle = [[0,0], Number.MAX_SAFE_INTEGER];
 				for (var i = 0; i < pointList.length-1; i++)
 				{
-					var fault = false;
-					for(var j = i+1; (j < pointList.length) && !fault; j++)
+					for(var j = i+1; (j < pointList.length); j++)
 					{
+						var fault = false;
 						var tmpCirc = circle(pointList[i], pointList[j]);
 						for (var k = 0; k < pointList.length && !fault; k++)
 						{
-							if(pointList[k] == pointList[i] || pointList[k] == pointList[j])
+							if(k == i || k == j)
 								continue;
 							else
-								if(!inside(tmpCirc, pointList[k]))//pointList[i], pointList[j], pointList[k]))
+								if(!inside(tmpCirc, pointList[k])) 
 									fault = true;
 						}
-						if (fault)
-							continue;
-						if (tmpCirc[1] < minCircle[1])
+						if (!fault && tmpCirc[1] < minCircle[1])
+						{
+							console.log(tmpCirc[1] + " < " + minCircle[1]);
 							minCircle = tmpCirc;
+						}
 					}
 				}
 				for (var i= 0; i < pointList.length-2; i++)
 				{
-					for(var j = i; j < pointList.length-1; j++)
+					for(var j = i+1; j < pointList.length-1; j++)
 					{
-						var fault = false;
-						for(var k = j; k < pointList.length && !fault; k++)
+						for(var k = j+1; k < pointList.length; k++)
 						{
+							var fault = false;
 							var tmpCirc = circle(pointList[i], pointList[j], pointList[k]);
 							for(var l = 0; l < pointList.length && !fault; l++)
 							{
-								if(pointList[l] == pointList[i] || pointList[l] == pointList[j] || pointList[l] == pointList[k])
+								if(l== i || l == j || l == k)
 									continue;
 								else
-									if(!inside(tmpCirc, pointList[l])) //pointList[i], pointList[j], pointList[k], pointList[l]))
+									if(!inside(tmpCirc, pointList[l]))
 										fault = true;
 							}
-							if(fault)
-								continue;
-							if (tmpCirc[1] < minCircle[1])
+							if (!fault && tmpCirc[1] < minCircle[1])
+							{
+								console.log(Math.floor(tmpCirc[1]) + " < " + Math.floor(minCircle[1]));
 								minCircle = tmpCirc;
+							}
 						}
 					}
 				}
