@@ -19,6 +19,8 @@
         <option>Brute</option>
         <option>Recursive</option>
     </select>
+	<button id="maxExec" class="menu">Max Execution</button>
+	<input id="max" type="number" class="coord"> (ms)
 	 <div>
         <div style="float:left">
             <br>
@@ -49,6 +51,7 @@
         var circleSize = 5;
         var restorePoint;
         var cluttered = false;
+		var isBrute = true;
 
         c.fillStyle = "#CA1337"
 
@@ -63,8 +66,9 @@
             c.arc(x,invertedY, circleSize, 0, 2*Math.PI, false);
             c.fill();
             c.stroke();
+			console.log(pointList.length);
         }
-		
+
 		$canvas.click(function(e)
         {
             if(cluttered)
@@ -79,10 +83,12 @@
 
 		$("#algorithm").change(function()
         {
-            cluttered = false;
-            pointList.length = 0;
-            c.clearRect(0,0, canvas.width, canvas.height);
-        });
+			var choice = $(this).val();
+			if( choice == "Brute")
+				isBrute = true;
+			else if(choice == "Recursive")
+				isBrute = false;
+		});
 		
 		$("#clear").click(function()
         {
@@ -144,20 +150,36 @@
 		
 		$("#random").click(function (e)
         {
-            if(cluttered)
-            {
-                c.putImageData(restorePoint, 0, 0);
-                cluttered = false;
-            }
-            var num = Math.random()*40+5;
+			if(cluttered)
+			{
+				c.putImageData(restorePoint, 0, 0);
+				cluttered = false;
+			}
+			var num = Math.random()*40+5;
 
-            for(var i = 0; i < num; i++)
-            {
-                var x = Math.floor(Math.random()*canvas.width/2 + canvas.width/4);
-                var y = Math.floor(Math.random()*canvas.height/2 + canvas.height/4);
-                addPoint(x,y);
-            }
+			for(var i = 0; i < num; i++)
+			{
+				var x = Math.floor(Math.random()*canvas.width/2 + canvas.width/4);
+				var y = Math.floor(Math.random()*canvas.height/2 + canvas.height/4);
+				addPoint(x,y);
+			}
         });
+
+		function random (n)
+		{
+			var num;
+			if(isNaN(n))
+				num = Math.random()*40+5;
+			else
+				num = n;
+
+			for(var i = 0; i < num; i++)
+			{
+				var x = Math.floor(Math.random()*canvas.width/2 + canvas.width/4);
+				var y = Math.floor(Math.random()*canvas.height/2 + canvas.height/4);
+				pointList.push([x,y]);
+			}
+		}
 		
 		$("#testCircle").click(function()
 		{
@@ -199,20 +221,92 @@
 			}
 
 		});
+
+		$("#maxExec").click(function()
+		{
+			var max = parseInt($("#max").val());
+			if(!isNaN(max))
+			{
+				var oldList = pointList.slice();
+				pointList.length = 0;
+				random(2);
+				var lastIncrease = 1;
+				var lastExec = 0;
+				var error = 0;
+				var run = true;
+				var over = false;
+				var bigger = false;
+				var biggest = 0;
+				var lowest = 0;
+				var tot0 = performance.now();
+				while (run)
+				{
+					var increase;
+					if(over)
+					{
+						increase = Math.ceil((biggest - lowest) /2);
+					}
+					else
+						increase = lastIncrease * 2;
+					random(increase);
+					var t0 = performance.now();
+					//if(isBrute)
+					brute();
+					var t1 = performance.now();
+					console.log(biggest + " > " + lowest);
+					if(t1-t0 > max)
+					{
+						error ++;
+						over = true;
+						bigger = true;
+						biggest = pointList.length;
+
+						pointList.length = 0;
+						random(lowest);			//go back to last point
+
+						if(error > 10)
+						{
+							console.log("error");
+							run = false;
+						}
+					}
+					else
+					{
+						error = 0;
+						bigger = false;
+						lowest = pointList.length;
+						lastExec = t1-t0;
+					}
+					if(over && biggest-lowest < 2 )
+					{
+						run = false;
+					}
+					lastIncrease = increase;
+				}
+				var tot1 = performance.now();
+				console.log("Closest points: "+ lowest);
+				console.log("Closest Execution: " + lastExec);
+				console.log("Total time: " + (tot1 - tot0));
+				pointList = oldList;
+			}
+		});
 		
 		$("#compute").click(function()
         {
             if(!cluttered)
                 restorePoint = c.getImageData(0,0, canvas.width, canvas.height);
             cluttered = true;
-			var res = brute();
+			var res;
+			var t0 = performance.now();
+			//if(isBrute)
+				res = brute();
+			var t1 = performance.now();
 			console.log(res);
+			console.log("Execution time (ms) : " + (t1-t0));
 			c.strokeStyle = "#000000";
 			c.beginPath();
 			c.arc(res[0][X], canvas.height - res[0][Y], res[1], 0, Math.PI*2);
 			c.stroke();
-
-			
         });
 		
 		function inside(circ, point)//a, b, c, d)
@@ -224,39 +318,6 @@
 			if (distance > circ[1])
 				return false;
 			return true;
-		
-			/*if(d == undefined)
-			{
-				//Find middle point and its radius, then compare with distance to point
-			
-				d = c; //if we only get three arguments, the circle only has 2 points, and the third argument is the point we're checking!
-				var diffX = ((a[X] - b[X])/2);
-				var diffY = ((a[Y] - b[Y])/2);
-				var midX = diffX + b[X];
-				var midY = diffY + b[Y];
-				var radius = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
-				var distance = Math.sqrt(Math.pow(midX - d[X], 2) + Math.pow(midY - d[Y], 2));
-				return radius <= distance;
-				
-			}
-			else
-			{			//No idea how this works, but the document says it's so!
-				/*var adx = a[X] - d[X];
-				var ady = a[Y] - d[Y];
-				var bdx = b[X] - d[X];
-				var bdy = b[Y] - d[Y];
-				var cdx = c[X] - d[X];
-				var cdy = c[Y] - d[Y];
-				var abdet = (adx * bdy) - (bdx * ady);
-				var bcdet = (bdx * cdy) - (cdx * bdy);
-				var cadet = (cdx * ady) - (adx * cdy);
-				var alift = (adx * adx) + (ady * ady);
-				var blift = (bdx * bdx) + (bdy * bdy);
-				var clift = (cdx * cdx) + (cdy * cdy);
-				var sign = (alift * bcdet) + (blift * cadet) + (clift * abdet);
-				return sign >= 0;
-				
-			}*/
 		}
 
 		function findIntersection( p1, p2, p3, p4)
@@ -367,7 +428,6 @@
 						}
 						if (!fault && tmpCirc[1] < minCircle[1])
 						{
-							console.log(tmpCirc[1] + " < " + minCircle[1]);
 							minCircle = tmpCirc;
 						}
 					}
@@ -390,7 +450,6 @@
 							}
 							if (!fault && tmpCirc[1] < minCircle[1])
 							{
-								console.log(Math.floor(tmpCirc[1]) + " < " + Math.floor(minCircle[1]));
 								minCircle = tmpCirc;
 							}
 						}

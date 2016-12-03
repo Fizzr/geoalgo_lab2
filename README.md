@@ -5,4 +5,4 @@ Kinda works :))))
 Pages: https://fizzr.github.io/geoalgo_lab2
 
 known bugs:
-Many!
+None so far (only halfway done tho);
