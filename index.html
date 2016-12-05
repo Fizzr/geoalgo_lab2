@@ -66,7 +66,6 @@
             c.arc(x,invertedY, circleSize, 0, 2*Math.PI, false);
             c.fill();
             c.stroke();
-			console.log(pointList.length);
         }
 
 		$canvas.click(function(e)
@@ -250,10 +249,11 @@
 						increase = lastIncrease * 2;
 					random(increase);
 					var t0 = performance.now();
-					//if(isBrute)
-					brute();
+					if(isBrute)
+						brute();
+					else
+						minDisc();
 					var t1 = performance.now();
-					console.log(biggest + " > " + lowest);
 					if(t1-t0 > max)
 					{
 						error ++;
@@ -298,8 +298,10 @@
             cluttered = true;
 			var res;
 			var t0 = performance.now();
-			//if(isBrute)
+			if(isBrute)
 				res = brute();
+			else
+				res = minDisc();
 			var t1 = performance.now();
 			console.log(res);
 			console.log("Execution time (ms) : " + (t1-t0));
@@ -458,6 +460,68 @@
 				return minCircle;
 			}
 		}
+		function shuffle(array) 
+		{
+			var currentIndex = array.length, temporaryValue, randomIndex;
+
+			// While there remain elements to shuffle...
+			while (0 !== currentIndex) 
+			{
+				// Pick a remaining element...
+				randomIndex = Math.floor(Math.random() * currentIndex);
+				currentIndex -= 1;
+
+				// And swap it with the current element.
+				temporaryValue = array[currentIndex];
+				array[currentIndex] = array[randomIndex];
+				array[randomIndex] = temporaryValue;
+			}
+			return array;
+		}
+		
+		function minDiscWith2Points(i, p1, p2)
+		{
+			var D = shuffle(pointList.slice(0, i));
+			var disc = circle(p1, p2);
+			for (var k = 0; k < D.length; k++)
+			{
+				console.log(inside(disc, D[i]));
+				if(!inside(disc, D[k]))
+					disc = circle(p1, p2, D[k]);
+			}
+			return disc;
+		}
+		
+		function minDiscWithPoint(i, p)
+		{
+			var D = shuffle(pointList.slice(0, i));
+			var disc = circle (D[0], p);
+			for(var j = 1; j < D.length; j++)
+			{
+					console.log(inside(disc, D[i]));
+					if(!inside(disc, D[j]))
+						disc = minDiscWith2Points(j, D[j], p);
+			}
+			return disc;
+		}
+		
+		function minDisc()
+		{
+			var D = shuffle(pointList.slice());
+			if(D.length > 1)
+			{
+				disc = circle(D[0], D[1]);
+				for (var i = 2; i < D.length; i++)
+				{
+					console.log(inside(disc, D[i]));
+					if(!inside(disc, D[i]))
+						disc = minDiscWithPoint(i, D[i]);
+				}
+			}
+			return disc;
+		}
+		
+		
 
 	</script>
 </html>
