@@ -520,57 +520,12 @@
 			return disc;
 		}
 		
-		function crossing (a, b, c)
+		function isRightTurn (a, b, c)
 		{
 			let v2 = [b[X] - a[X], b[Y] - a[Y]];
 			let v1 = [c[X] - b[X], c[Y] - b[Y]];
 			let cross = v1[X]*v2[Y] - v1[Y]*v2[X];
 			return cross > 0;
-		}
-		
-        function isRightTurn(a, b, c)  // y = kx * c
-        {
-            if((b[0] == c[0] && b[1] == c[1]) || (a[0] == b[0] && a[1] == b[1]))
-                return false;
-			if(a[0] == b[0])
-			{
-				var downToUp = a[1] < b[1];
-				if (c[0] > a[0])
-				{
-					if(downToUp)
-						return true;
-					else
-						return false;
-				}
-				else
-				{
-					if(downToUp)
-						return false;
-					else
-						return true;
-				}
-			}
-			else
-			{
-				var goingRight = a[0] < b[0];
-				var koef = (a[1] - b[1]) / (a[0] - b[0]);
-				var con = (-a[0] * koef) + a[1];
-				
-				if(goingRight)
-				{
-					if(c[1] < koef * c[0] + con)
-						return true;
-					else
-						return false;
-				}
-				else
-				{
-					if(c[1] > koef * c[0] + con)
-						return true;
-					else
-						return false;
-				}
-			}
 		}
 		
         function Andrew ()
@@ -635,12 +590,8 @@
 		
 		function rotatingCalipers()
 		{
-			//let hull = Andrew();
-			a = [1,1];
-			b = [2,2];
-			c = [3, 2];
-			console.log(crossing(a, b, c));
-			console.log(isRightTurn(a, b, c));
+			let hull = Andrew();
+			
 		}
 		
 		
