@@ -18,6 +18,7 @@
     <select id="algorithm">
         <option>Brute</option>
         <option>Recursive</option>
+		<option>Calipers</option>
     </select>
 	<button id="maxExec" class="menu">Max Execution</button>
 	<input id="max" type="number" class="coord"> (ms)
@@ -53,6 +54,7 @@
 		let restorePoint;
 		let cluttered = false;
 		let isBrute = true;
+		let calipers = false;
 
         c.fillStyle = "#CA1337";
 
@@ -85,11 +87,19 @@
         {
 	        const choice = $(this).val();
 			if( choice == "Brute")
+			{
 				isBrute = true;
+				calipers = false;
+			}
 			else if(choice == "Recursive")
+			{
 				isBrute = false;
+				calipers = false;
+			}
+			else if(choice == "Calipers")
+				calipers = true;
 		});
-		
+
 		$("#clear").click(function()
         {
             cluttered = false;
@@ -157,23 +167,12 @@
 			}
 	        const num = Math.random() * 40 + 5;
 
-			for(let i = 0; i < num; i++)
-			{
-				const x = Math.floor(Math.random() * canvas.width / 2 + canvas.width / 4);
-				const y = Math.floor(Math.random() * canvas.height / 2 + canvas.height / 4);
-				addPoint(x,y);
-			}
+			random(num);
         });
 
-		function random (n)
+		function random (n)	
 		{
-			let num;
-			if(isNaN(n))
-				num = Math.random()*40+5;
-			else
-				num = n;
-
-			for(let i = 0; i < num; i++)
+			for(var i = 0; i < n; i++)
 			{
 				const x = Math.floor(Math.random() * canvas.width / 2 + canvas.width / 4);
 				const y = Math.floor(Math.random() * canvas.height / 2 + canvas.height / 4);
@@ -297,13 +296,13 @@
             if(!cluttered)
                 restorePoint = c.getImageData(0,0, canvas.width, canvas.height);
             cluttered = true;
-	        let res;
-	        const t0 = performance.now();
-			if(isBrute)
-				res = brute();
+			var res;
+			var t0 = performance.now();
+			if(calipers)
+				res = rotatingCalipers();
 			else
-				res = minDisc();
-	        const t1 = performance.now();
+				res = (isBrute? brute() : minDisc());
+			var t1 = performance.now();
 			console.log(res);
 			console.log("Execution time (ms) : " + (t1-t0));
 			c.strokeStyle = "#000000";
@@ -530,6 +529,79 @@
            console.log(small);
         });
 		
+		function isRightTurn (a, b, c)
+		{
+			let v2 = [b[X] - a[X], b[Y] - a[Y]];
+			let v1 = [c[X] - b[X], c[Y] - b[Y]];
+			let cross = v1[X]*v2[Y] - v1[Y]*v2[X];
+			return cross > 0;
+		}
+		
+        function Andrew ()
+        {
+            pointList.sort(function (a, b)
+            {
+                if(a[0] == b[0])
+                    return a[1] - b[1];
+                return a[0] - b[0];         //Sort by x coordinate (index 0)
+            })
+            var upperHull = [];
+            var lowerHull = [];
+            var onlyOne = false;
+            var i = 0;
+            var right = true;
+            var change = 1;
+            var hull = upperHull;
+            for (var p = 0; p < 2; p++)
+            {
+                while ((i < pointList.length && right) || (i >= 0 && !right))
+                {
+                    if (hull.length >= 2)
+                    {
+                        var a = hull[hull.length - 2];
+                        var b = hull[hull.length - 1];
+                        while (!onlyOne && !isRightTurn(a, b, pointList[i]))
+                        {
+                            hull.pop()
+                            if (hull.length > 1)
+                            {
+                                a = hull[hull.length - 2];
+                                b = hull[hull.length - 1];
+                            }
+                            else
+                            {
+                                onlyOne = true;
+                            }
+                        }
+                    }
+                    if (hull.length == 1)
+                    {
+                        if(!(hull[0][0] == pointList[i][0] && hull[0][1] == pointList[i][1]))
+                            hull.push(pointList[i]);
+                    }
+                    else
+                        hull.push(pointList[i]);
+                    if (hull.length > 1)
+                    {
+                        onlyOne = false;
+                    }
+                    i = i + change;
+                }
+                i--;
+                change = -1;
+                right = false;
+                hull = lowerHull;
+            }
+            var res = upperHull.concat(lowerHull.slice(1, lowerHull.length-1));
+			
+            return res;
+        }
+		
+		function rotatingCalipers()
+		{
+			let hull = Andrew();
+			
+		}		
 
 	</script>
 </html>
