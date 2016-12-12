@@ -44,6 +44,8 @@
 	
 	
 	<script>
+        const RAD_TO_DEG = 180/Math.PI;
+        const DEG_TO_RAD = Math.PI/180;
 		const X = 0;
 		const Y = 1;
 		const $canvas = $("#myCanvas");
@@ -296,19 +298,20 @@
             if(!cluttered)
                 restorePoint = c.getImageData(0,0, canvas.width, canvas.height);
             cluttered = true;
-			var res;
-			var t0 = performance.now();
 			if(calipers)
-				res = rotatingCalipers();
+				rotatingCalipers();
 			else
-				res = (isBrute? brute() : minDisc());
-			var t1 = performance.now();
-			console.log(res);
-			console.log("Execution time (ms) : " + (t1-t0));
-			c.strokeStyle = "#000000";
-			c.beginPath();
-			c.arc(res[0][X], canvas.height - res[0][Y], res[1], 0, Math.PI*2);
-			c.stroke();
+			{
+				const t0 = performance.now();
+				const res = (isBrute ? brute() : minDisc());
+				const t1 = performance.now();
+				console.log(res);
+				console.log("Execution time (ms) : " + (t1 - t0));
+				c.strokeStyle = "#000000";
+				c.beginPath();
+				c.arc(res[0][X], canvas.height - res[0][Y], res[1], 0, Math.PI * 2);
+				c.stroke();
+			}
         });
 		
 		function inside(circ, point)//a, b, c, d)
@@ -517,8 +520,8 @@
 
         $("#test").click(function ()
         {
-            const p1 = [300, 200];
-            const p2 = [200, 400];
+            const p1 = [250, 250];
+            const p2 = [500, 200];
 	        addPoint(p1[X],p1[Y]);
 	        addPoint(p2[X],p2[Y]);
             console.log(Math.atan2(p2[Y]-p1[Y], p2[X] - p1[X]) * 180/Math.PI);
@@ -540,21 +543,21 @@
                     return a[1] - b[1];
                 return a[0] - b[0];         //Sort by x coordinate (index 0)
             })
-            var upperHull = [];
-            var lowerHull = [];
-            var onlyOne = false;
-            var i = 0;
-            var right = true;
-            var change = 1;
-            var hull = upperHull;
-            for (var p = 0; p < 2; p++)
+            let upperHull = [];
+	        let lowerHull = [];
+	        let onlyOne = false;
+	        let i = 0;
+	        let right = true;
+	        let change = 1;
+	        let hull = upperHull;
+            for (let p = 0; p < 2; p++)
             {
                 while ((i < pointList.length && right) || (i >= 0 && !right))
                 {
                     if (hull.length >= 2)
                     {
-                        var a = hull[hull.length - 2];
-                        var b = hull[hull.length - 1];
+	                    let a = hull[hull.length - 2];
+	                    let b = hull[hull.length - 1];
                         while (!onlyOne && !isRightTurn(a, b, pointList[i]))
                         {
                             hull.pop()
@@ -587,7 +590,7 @@
                 right = false;
                 hull = lowerHull;
             }
-            var res = upperHull.concat(lowerHull.slice(1, lowerHull.length-1));
+	        const res = upperHull.concat(lowerHull.slice(1, lowerHull.length-1));
 			
             return res;
         }
@@ -640,27 +643,7 @@
 			console.log(leftIndex + ", " + topIndex +", "+rightIndex +", "+botIndex);
 			console.log(bools);
 
-            /*find angle from axis aligned to next point, take smallest and rotate until reaching another point. Start here!
-            get line function for these two points
-            get perpendicular function for this line
-            insert x and y of next value in this to get c value
-            take x + 1 in this to get new point
-            take first two points of first line, and the two points of perpendicular line and calculate intersection
-            https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
-            Do for all points in rectangle.
-            move on to next rotation.
-            */
-
-            // OR!
-
-            /*
-            Instead of finding points.
-            Find both parallel lines
-            calculate distance
-            do for both pairs
-            see if smaller area.
-             */
-
+            let lineAngle = [90, 360, 270, 180];
             let angles = [0,0,0,0];
             let turned = 0;
             function getAngle(i)
@@ -672,44 +655,98 @@
 		            after = hull[0];
 	            else
 		            after = hull[aIndex];
-	            const sign = (i == 3? -1 : 1);
-                const base = (Math.PI/2) + (Math.PI/2)*i*sign;   // Only works for first round....
-	            const angle = base - Math.atan2(after[Y]-hull[i][Y], after[X] - hull[i][X]);
+	            //console.log(i);
+	            let rawAngle = (Math.atan2(after[Y]-hull[indexes[i]][Y], after[X] - hull[indexes[i]][X])) * RAD_TO_DEG;
+	            if (rawAngle <= 0)
+                    rawAngle = 360 + rawAngle;   //Angle is negative, so effectively this is a minus.
+	            //console.log("Raw angle: " + rawAngle);
+	            //console.log("Reference line: " + lineAngle[i]);
+	            let angle = lineAngle[i] - rawAngle;
+                if(angle < 0)
+                {
+                	angle = 360 - angle;
+                }
+	            //console.log("Angle difference: " + angle);
+
+	            /*c.beginPath();
+	            c.moveTo(hull[indexes[i]][X], canvas.height - hull[indexes[i]][Y]);
+	            c.lineTo(after[X], canvas.height - after[Y]);
+	            c.stroke();
+
+	            c.beginPath();
+	            c.moveTo(hull[indexes[i]][X], canvas.height - hull[indexes[i]][Y]);
+	            c.lineTo(hull[indexes[i]][X] + (Math.cos(lineAngle[i] * DEG_TO_RAD) * 200), canvas.height - (hull[indexes[i]][Y] + Math.sin(lineAngle[i] * DEG_TO_RAD) * 200));
+	            c.stroke();
+*/
+
+
 	            return angle;
             }
             let results = [];
             let smallestArea = Number.MAX_SAFE_INTEGER;
+            let cont = 1;
 
-            while(turned < Math.PI)
+			let a = "";
+			for (let i = 0; i < points.length; i++)
+			{
+				angles[i] = getAngle(i);
+				a += angles[i] + "\n";
+			}
+			//console.log(a);
+            let debug = true;
+            while(debug)//turned < 90)   //Only need to turn 90 degrees
             {
-	            for (let i = 0; i < points.length; i++)
-	            {
-		            angles[i] = getAngle(indexes[i]);
-	            }
-	            console.log(angles);
-
+            	debug = false;
 	            let smallest = angles[0];
 	            let smallIndex = 0;
-    	        for (let i = 1; i < angles.length; i++)
-                    if(angles[i] < smallest)
-                    {
-                        smallest = angles[i];
-                        smallIndex = i;
-                    }
-
-	            console.log(smallest);
-
-    	        for (let i = 0; i < angles.length; i++)
-                	angles[i] -= smallest;
+	            for (let i = 1; i < angles.length; i++)
+		            if (angles[i] < smallest)
+		            {
+			            smallest = angles[i];
+			            smallIndex = i;
+		            }
 	            turned += smallest;
-	            let oldIndex = indexes[smallIndex];
+	            if (turned > 90)
+                {
+		            console.log("WOOOOOOO!");
+                    continue;
+                }
+	            //console.log("Smallest angle: " +smallest);
+    	        if(smallest < 0)
+    	        	turned = 360;
+    	        let print1 = "Angles: \n";
+    	        let print2 = "Lines: \n";
+    	        for (let i = 0; i < angles.length; i++)
+                {
+	                print1 += angles[i] + "\n";
+	                print2 += lineAngle[i] + "\n";
+
+	                angles[i] -= smallest;
+                	lineAngle[i] -= smallest;
+                	if(lineAngle[i] < 0)
+                		lineAngle[i] = 360 + lineAngle[i]; //add with negative. Shouldn't actually happen (since we're only supposed to turn 90 deg, but eh, i'll fix it later)
+                }
+                /*console.log(print1);
+    	        console.log(print2);
+                const k = smallIndex;
+                c.beginPath();
+    	        c.moveTo(points[k][X], canvas.height - points[k][Y]);
+    	        c.lineTo(points[k][X] + Math.cos(lineAngle[k]*DEG_TO_RAD) * 200, canvas.height - (points[k][Y] + Math.sin(lineAngle[k]*DEG_TO_RAD) * 200));
+    	        c.stroke();
+	            c.font = "14px serif";
+	            c.fillText(cont.toString(), points[k][X] + Math.cos(lineAngle[k]*DEG_TO_RAD) * 100, canvas.height - (points[k][Y] + Math.sin(lineAngle[k]*DEG_TO_RAD) * 100) + 10);
+       	        cont ++;
+*/
+	            const oldIndex = indexes[smallIndex];
 	            let newIndex;
 	            if(oldIndex + 1 == hull.length)
 	            	newIndex = 0;
 	            else
 	            	newIndex = oldIndex+1;
 	            points[smallIndex] = hull[newIndex];
+	            indexes[smallIndex] = newIndex;
                 angles[smallIndex] = getAngle(smallIndex);
+
                 //we now have the indexes of the two points in the hull at oldIndex and newIndex, and the angles list is already updated with the next angle
 
                 function distance(a, b, c1, c2)
@@ -725,26 +762,58 @@
                 console.log(points);
                 console.log(oldIndex);
                 console.log(newIndex);
-                const a = points[oldIndex];
-                const b = points[newIndex];
+
+	            let perpIndex1;
+	            let perpIndex2;
+                let oppIndex;
+	            if(smallIndex %2 == 0)
+	            {
+		            perpIndex1 = 1;
+		            perpIndex2 = 3;
+		            if(smallIndex == 2)
+		            	oppIndex = 0;
+		            else
+		            	oppIndex = 2;
+	            }
+	            else
+	            {
+		            perpIndex1 = 0;
+		            perpIndex2 = 2;
+		            if(smallIndex == 1)
+			            oppIndex = 3;
+		            else
+			            oppIndex = 1;
+	            }
+
+	            console.log(smallIndex + ", "+ perpIndex1 + ", " + oppIndex + ", "+ perpIndex2 );
+
+	            const a = hull[oldIndex];
+                const b = hull[newIndex];
+                console.log(a);
+                console.log(b);
+                //const angle = Math.atan2(b[Y] - a[Y], b[X] - a[X]);
                 const line = getLine(a, b);
                 const koef = line[0];
                 const c11 = line[1];
-                const opposite = (smallIndex +2 > points.length-1? points[smallIndex-2]: points[smallIndex+2]);
+                const opposite = points[oppIndex];
                 const c12 = koef * opposite[X] - opposite[Y];
-                const dist1 = distance(koef, 0, c11, c12);
-                let perpIndex1;
-                let perpIndex2;
-                if(smallIndex %2 == 0)
-                {
-                	perpIndex1 = 1;
-                	perpIndex2 = 3;
-                }
-                else
-                {
-                	perpIndex1 = 0;
-                	perpIndex2 = 2;
-                }
+
+                c.beginPath();
+                c.moveTo(a[X], canvas.height - a[Y]);
+                c.lineTo(100, canvas.height - (100 * koef + c11));
+                //c.lineTo(a[X] + Math.cos(angle) * 200, canvas.height - (a[Y] + Math.sin(angle) * 200));
+                c.stroke();
+
+	            c.beginPath();
+	            c.moveTo(opposite[X], canvas.height - opposite[Y]);
+	            c.lineTo(100, canvas.height - (100 * koef + c12));
+	            //c.lineTo(opposite[X] + Math.cos(angle) * 200, canvas.height - (opposite[Y] + Math.sin(angle) * 200));
+	            c.stroke();
+
+
+
+	            /*const dist1 = distance(koef, 0, c11, c12);
+
                 const perpKoef = -1 * (1/koef);
                 const c21 = perpKoef * points[perpIndex1][X] - points[perpIndex1][Y];
                 const c22 = perpKoef * points[perpIndex1][X] - points[perpIndex2][Y];
@@ -752,9 +821,9 @@
                 const area = dist1 * dist2;
                 if(area < smallestArea)
                 {
-                	smallestArea = area;
-                	results = [koef, [c11, c12, c21, c22], [a, opposite, points[perpIndex1], points[perpIndex2]]];
-                }
+                    smallestArea = area;
+                    results = [koef, [c11, c12, c21, c22], [a, opposite, points[perpIndex1], points[perpIndex2]]];
+                }*/
             }
             function findIntersect (koef, c1, p1, perpKoef, c2, pk)
             {
@@ -769,7 +838,7 @@
                 intersect[Y] = ((p1[X]*p2[Y] - p1[Y]*p2[X])*(p3[Y] - p4[Y]) - (p1[Y] - p2[Y])*(p3[X]*p4[Y] - p3[Y]*p4[X])) / ((p1[X] - p2[X])*(p3[Y] - p4[Y]) - (p1[Y]-p2[Y])*(p3[X]-p4[X]));
                 return intersect;
             }
-
+/*
             let p1 = findIntersect(results[0], results[1][0], results[2][0], -1* (1/results[0]), results[1][2], results[2][2]);
 			let p2 = findIntersect(results[0], results[1][1], results[2][1], -1* (1/results[0]), results[1][2], results[2][2]);
 			let p3 = findIntersect(results[0], results[1][1], results[2][1], -1* (1/results[0]), results[1][3], results[2][3]);
@@ -794,6 +863,7 @@
 			c.moveTo(p4[X], canvas.height - p4[Y]);
 			c.lineTo(p1[X], canvas.height - p1[Y]);
 			c.stroke();
+*/
 		}
 
 	</script>
